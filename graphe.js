@@ -25,38 +25,36 @@ class Graphe {
             nbArcs,
             nbValeursParArc,
             ...rest
-        ] = data.split("\n");
+        ] = data.replace(/\r/g,"").split("\n")
 
-        this.oriente = oriente
-        this.nbArcs = nbArcs;
-        this.nbSommets = nbSommets;
-        this.nbValeursParArc = nbValeursParArc;
+        this.oriente =  oriente.split(": ")[1] == "true";
+        this.nbArcs = +nbArcs.split(": ")[1];
+        this.nbSommets = +nbSommets.split(": ")[1];
+        this.nbValeursParArc = +nbValeursParArc.split(": ")[1];
 
         //Espace + label VERTICES ... 
         let i = 2;
 
-        while (rest[i]) {
+        for(;i < this.nbSommets + 2;i++ ){
             const [id, sommet, ...valeurs] = rest[i].split(" ")
             this.sommets.set(sommet, id)
             this.listeSommets.push(new Vertex(sommet, valeurs))
-            i++;
         }
 
         //Espace + label EDGES ... 
         i += 2;
-
         this.listeAjacent = Array(this.listeSommets.length).fill(undefined).map(() => [])
         while (rest[i]) {
-            const [init, term, ...valeurs] = rest[i].split(" ")
 
+            const [init, term, ...valeurs] = rest[i].split(" ").map(el=>+el)
 
-            if (!oriente) {
+            if (!this.oriente) {
                 //Ajout des sommet dans le cas non orienté
                 if (this.listeAjacent[term]) {
-                    this.listeAjacent[term].push(new Edge(init, term, valeurs))
+                    this.listeAjacent[term].push(new Edge( term,init, valeurs))
                 }
                 else {
-                    this.listeAjacent[term] = [new Edge(init, term, valeurs)]
+                    this.listeAjacent[term] = [new Edge(term, init, valeurs)]
                 }
 
             }
@@ -121,8 +119,7 @@ class Graphe {
                 marque[adjacent] = true;
                 file.push(adjacent)
             })
-            traite[sommet] = p;
-            p++;
+            traite[sommet] = p++;
         }
         return traite
     }
@@ -153,6 +150,49 @@ class Graphe {
             pile.pop()
         }
         return traite
+    }
+
+    dijkstra(s,d){
+        const marque = new Array(this.listeSommets.length).fill(false);
+        const distances = new Array(this.listeSommets.length).fill(Infinity);
+        const pred = new Array(this.listeSommets.length).fill(null);
+        distances[s] = 0
+
+        while( s != null){
+            if(s == d)break;
+            this.listeAjacent[s].forEach(({term,valeurs})=>{
+                if(marque[term])return;
+                const [distance] = valeurs;
+                if(distances[s] + distance < distances[term]){
+                    distances[term] = distances[s] + distance
+                    pred[term] = s
+                }
+
+            })
+            marque[s] = true
+    
+            let minDistance = Infinity;
+            s = null
+            distances.forEach((distance ,index)=>{
+                if(marque[index])return;
+                if(distance < minDistance){
+                    minDistance = distance;
+                    s = index
+                }
+            })
+        }
+
+        const chemin = [this.listeSommets[s].nom] 
+        while(pred[s] != null){
+            chemin.push(this.listeSommets[pred[s]].nom)
+            s = pred[s]
+        }
+        console.log(chemin)
+        return distances[d]
+
+        // distances.forEach(val=>console.log(val))
+        // pred.forEach(val=>console.log(val))
+
     }
 }
 
