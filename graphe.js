@@ -12,6 +12,11 @@ class Graphe {
         this.listeSommets = listeSommets;
         this.listeAjacent = listeAjacent;
         this.sommets = new Map()
+        if(listeSommets){
+            listeSommets.forEach((sommet, id) => {
+                this.sommets.set(sommet.nom, sommet)
+            });
+        }
     }
 
     loadFile(fileName) {
@@ -32,13 +37,17 @@ class Graphe {
         this.nbSommets = +nbSommets.split(": ")[1];
         this.nbValeursParArc = +nbValeursParArc.split(": ")[1];
 
+        this.listeAjacent = []
+        this.listeSommets = []
+
         //Espace + label VERTICES ... 
         let i = 2;
 
         for(;i < this.nbSommets + 2;i++ ){
             const [id, sommet, ...valeurs] = rest[i].split(" ")
-            this.sommets.set(sommet, id)
-            this.listeSommets.push(new Vertex(sommet, valeurs))
+            const vertex = new Vertex(id,sommet, valeurs)
+            this.sommets.set(sommet, vertex)
+            this.listeSommets.push(new Vertex(id,sommet, valeurs))
         }
 
         //Espace + label EDGES ... 
@@ -51,7 +60,7 @@ class Graphe {
             if (!this.oriente) {
                 //Ajout des sommet dans le cas non orienté
                 if (this.listeAjacent[term]) {
-                    this.listeAjacent[term].push(new Edge( term,init, valeurs))
+                    this.listeAjacent[term].push(new Edge(term, init, valeurs))
                 }
                 else {
                     this.listeAjacent[term] = [new Edge(term, init, valeurs)]
@@ -79,7 +88,7 @@ class Graphe {
 
     print() {
         this.listeSommets.forEach(({ nom, valeurs, degre, degreExt, degreInt }) => {
-            const id = this.sommets.get(nom);
+            const {id} = this.sommets.get(nom);
             let arc = [];
             if (this.listeAjacent[id]) {
                 arc = this.listeAjacent[id].map((
@@ -114,7 +123,7 @@ class Graphe {
 
         while (file.length) {
             const sommet = file.shift();
-            (this.listeAjacent[sommet] || []).forEach(({ term: adjacent }) => {
+            this.listeAjacent[sommet].forEach(({ term: adjacent }) => {
                 if (marque[adjacent]) return;
                 marque[adjacent] = true;
                 file.push(adjacent)
@@ -181,18 +190,90 @@ class Graphe {
                 }
             })
         }
-
+        if(d == null)return distances
         const chemin = [this.listeSommets[s].nom] 
         while(pred[s] != null){
             chemin.push(this.listeSommets[pred[s]].nom)
             s = pred[s]
         }
-        console.log(chemin)
-        return distances[d]
+        
+        return {distance:distances[d],chemin:chemin.reverse()}
+    }
 
-        // distances.forEach(val=>console.log(val))
-        // pred.forEach(val=>console.log(val))
+    prim(){
+        const sommetArbre = [this.listeSommets[0]]
+        const adjacentArbre = new Array(this.listeSommets.length).fill(undefined).map(() => [])
 
+
+        while(sommetArbre.length < this.listeSommets.length){
+            let min = Infinity;
+            let minEdge = null;
+            sommetArbre.forEach((sommet)=>{
+                const adjacent = this.listeAjacent[sommet.id]
+                adjacent.forEach((edge)=>{
+                    if(sommetArbre.find(sommet => sommet.id == edge.term))return;
+                    if(edge.valeurs[0] < min){
+                        min = edge.valeurs[0]
+                        minEdge = edge
+                    }
+                })
+            })
+            sommetArbre.push(this.listeSommets[minEdge.term])
+            adjacentArbre[minEdge.init].push(minEdge)
+        }
+
+
+        return new Graphe(
+            this.oriente,
+            this.nbSommets,
+            adjacentArbre.length,
+            this.nbValeursParArc,
+            //copie profonde
+            this.listeSommets.map(el=>({...el})),
+            adjacentArbre.map(el=>el.map(el=>({...el}))))
+    }
+
+    kruskal(){
+        const numConnexe = new Array(this.listeSommets.length).fill(undefined).map((_,i)=>i);
+        const adjacentArbre = new Array(this.listeSommets.length).fill(undefined).map(() => [])
+        const nbElement = new Array(this.listeSommets.length).fill(1)
+
+        //reduce arretes 
+        const arretes = this.listeAjacent.reduce((acc,adjacent)=>{
+            return [...acc,...adjacent]
+        },[]).sort((a,b)=>a.valeurs[0] - b.valeurs[0])
+
+        while(arretes.length){
+            const arrete = arretes.shift()
+            const {init,term} = arrete
+            //si meme connexe alors création de cycle
+            if(numConnexe[init] == numConnexe[term])continue;
+            adjacentArbre[init].push(arrete)
+            //Connexe le plus petit 
+            const petitConnexe = nbElement[numConnexe[init]] <=  nbElement[numConnexe[term]] ? numConnexe[init] : numConnexe[term]
+            const grandConnexe = nbElement[numConnexe[init]] > nbElement[numConnexe[term]] ? numConnexe[init] : numConnexe[term]
+
+            nbElement[grandConnexe] += nbElement[petitConnexe]
+            //parcours des connexes 
+            for(let i=0;i<numConnexe.length;i++){
+                if(numConnexe[i] == petitConnexe){
+                    numConnexe[i] = grandConnexe
+                }
+            }
+            console.log(arrete)
+
+            console.log(numConnexe,nbElement)
+            if(nbElement[grandConnexe] == this.listeSommets.length-1)break;
+        }
+
+        return new Graphe(
+            this.oriente,
+            this.nbSommets,
+            adjacentArbre.length,
+            this.nbValeursParArc,
+            //copie profonde
+            this.listeSommets.map(el=>({...el})),
+            adjacentArbre.map(el=>el.map(el=>({...el}))))
     }
 }
 
