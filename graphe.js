@@ -260,9 +260,6 @@ class Graphe {
                     numConnexe[i] = grandConnexe
                 }
             }
-            console.log(arrete)
-
-            console.log(numConnexe,nbElement)
             if(nbElement[grandConnexe] == this.listeSommets.length-1)break;
         }
 
